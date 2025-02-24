@@ -1,6 +1,16 @@
 import unittest
 
-from textnode import TextNode, TextType, text_node_to_html_node, split_nodes_delimiter
+from textnode import (
+    TextNode, 
+    TextType, 
+    text_node_to_html_node, 
+    split_nodes_delimiter, 
+    extract_markdown_links, 
+    extract_markdown_images,
+    split_nodes_image,
+    split_nodes_link
+    )
+
 from htmlnode import LeafNode
 
 
@@ -165,6 +175,284 @@ class TestTextNode(unittest.TestCase):
             TextNode(" text", TextType.TEXT)
         ]
         self.assertEqual(result1, expected1)
+
+    def test_extract_basic_image(self):
+        text = "![rick roll](https://i.imgur.com/aKaOqIh.gif)"
+        expected = [("rick roll", "https://i.imgur.com/aKaOqIh.gif")]
+        self.assertEqual(extract_markdown_images(text), expected)
+
+    def test_extract_multiple_images(self):
+        text = "![rick roll](https://i.imgur.com/aKaOqIh.gif) and ![obi wan](https://i.imgur.com/fJRm4Vk.jpeg)"
+        expected = [
+            ("rick roll", "https://i.imgur.com/aKaOqIh.gif"),
+            ("obi wan", "https://i.imgur.com/fJRm4Vk.jpeg")
+        ]
+        self.assertEqual(extract_markdown_images(text), expected)
+
+    def test_extract_basic_link(self):
+        text = "[to boot dev](https://www.boot.dev)"
+        expected = [("to boot dev", "https://www.boot.dev")]
+        self.assertEqual(extract_markdown_links(text), expected)
+
+    def test_extract_multiple_links(self):
+        text = "[boot.dev](https://www.boot.dev) and [youtube](https://youtube.com)"
+        expected = [
+            ("boot.dev", "https://www.boot.dev"),
+            ("youtube", "https://youtube.com")
+        ]
+        self.assertEqual(extract_markdown_links(text), expected)
+
+    def test_empty_text(self):
+        self.assertEqual(extract_markdown_images(""), [])
+        self.assertEqual(extract_markdown_links(""), [])
+
+    def test_text_with_no_matches(self):
+        text = "This is just plain text without any markdown"
+        self.assertEqual(extract_markdown_images(text), [])
+
+    def test_mixed_content(self):
+        text = "Here's a ![cute cat](https://pics.com/cat.jpg) and a [link to dogs](https://dogs.com)"
+        self.assertEqual(
+            extract_markdown_images(text),
+            [("cute cat", "https://pics.com/cat.jpg")]
+        )
+        self.assertEqual(
+            extract_markdown_links(text),
+            [("link to dogs", "https://dogs.com")]
+        )
+
+    def test_special_characters_in_url(self):
+        text = "![test](https://example.com/path?param=1&other=2) [complex link](https://api.com/path?q=test&page=1#section)"
+        self.assertEqual(
+            extract_markdown_images(text),
+            [("test", "https://example.com/path?param=1&other=2")]
+        )
+        self.assertEqual(
+            extract_markdown_links(text),
+            [("complex link", "https://api.com/path?q=test&page=1#section")]
+        )
+
+    def test_multiline_content(self):
+        text = """
+        First line with ![image1](https://test.com/1.jpg)
+        Second line with [link1](https://test.com/page1)
+        Third line with ![image2](https://test.com/2.jpg)
+        """
+        self.assertEqual(
+            extract_markdown_images(text),
+            [
+                ("image1", "https://test.com/1.jpg"),
+                ("image2", "https://test.com/2.jpg")
+            ]
+        )
+        self.assertEqual(
+            extract_markdown_links(text),
+            [("link1", "https://test.com/page1")]
+        )
+    
+    def test_adjacent_links_and_images(self):
+        text = "![img1](url1)![img2](url2)[link1](url3)[link2](url4)"
+        self.assertEqual(
+            extract_markdown_images(text),
+            [("img1", "url1"), ("img2", "url2")]
+        )
+        self.assertEqual(
+            extract_markdown_links(text),
+            [("link1", "url3"), ("link2", "url4")]
+        )
+
+    def test_empty_alt_text_and_urls(self):
+        text = "![](https://example.com) [](https://example.com)"
+        self.assertEqual(
+            extract_markdown_images(text),
+            [("", "https://example.com")]
+        )
+        self.assertEqual(
+            extract_markdown_links(text),
+            [("", "https://example.com")]
+        )
+
+    def test_split_nodes_image_basic(self):
+        nodes = [TextNode("Hello ![image](url) world", TextType.TEXT)]
+        result = split_nodes_image(nodes)
+        expected = [
+            TextNode("Hello ", TextType.TEXT),
+            TextNode("image", TextType.IMAGE, "url"),
+            TextNode(" world", TextType.TEXT)
+        ]
+        self.assertEqual(result, expected)
+
+    def test_split_nodes_image_no_images(self):
+        nodes = [TextNode("Hello world", TextType.TEXT)]
+        result = split_nodes_image(nodes)
+        expected = [TextNode("Hello world", TextType.TEXT)]
+        self.assertEqual(result, expected)
+
+    def test_split_nodes_image_multiple(self):
+        nodes = [TextNode("![first](url1) between ![second](url2)", TextType.TEXT)]
+        result = split_nodes_image(nodes)
+        expected = [
+            TextNode("first", TextType.IMAGE, "url1"),
+            TextNode(" between ", TextType.TEXT),
+            TextNode("second", TextType.IMAGE, "url2"),
+        ]
+        self.assertEqual(result, expected)
+
+    def test_split_nodes_image_at_start(self):
+        nodes = [TextNode("![image](url) rest of text", TextType.TEXT)]
+        result = split_nodes_image(nodes)
+        expected = [
+            TextNode("image", TextType.IMAGE, "url"),
+            TextNode(" rest of text", TextType.TEXT)
+        ]
+        self.assertEqual(result, expected)
+
+    def test_split_nodes_image_at_end(self):
+        nodes = [TextNode("beginning ![image](url)", TextType.TEXT)]
+        result = split_nodes_image(nodes)
+        expected = [
+            TextNode("beginning ", TextType.TEXT),
+            TextNode("image", TextType.IMAGE, "url"),
+        ]
+        self.assertEqual(result, expected)
+
+    def test_split_nodes_adjacent_images(self):
+        nodes = [TextNode("![one](url1)![two](url2)", TextType.TEXT)]
+        result = split_nodes_image(nodes)
+        expected = [
+            TextNode("one", TextType.IMAGE, "url1"),
+            TextNode("two", TextType.IMAGE, "url2"),
+        ]
+        self.assertEqual(result, expected)
+
+    def test_split_nodes_image_complex_url(self):
+        nodes = [TextNode("Start ![complex](https://example.com/image.jpg?size=large#fragment) end", TextType.TEXT)]
+        result = split_nodes_image(nodes)
+        expected = [
+            TextNode("Start ", TextType.TEXT),
+            TextNode("complex", TextType.IMAGE, "https://example.com/image.jpg?size=large#fragment"),
+            TextNode(" end", TextType.TEXT)
+        ]
+        self.assertEqual(result, expected)
+
+    def test_split_nodes_image_with_spaces(self):
+        nodes = [TextNode("![alt text with spaces](image url with spaces)", TextType.TEXT)]
+        result = split_nodes_image(nodes)
+        expected = [
+            TextNode("alt text with spaces", TextType.IMAGE, "image url with spaces"),
+        ]
+        self.assertEqual(result, expected)
+
+    def test_split_nodes_image_multiple_with_text(self):
+        nodes = [TextNode("Start ![one](url1) middle ![two](url2) ![three](url3) end", TextType.TEXT)]
+        result = split_nodes_image(nodes)
+        expected = [
+            TextNode("Start ", TextType.TEXT),
+            TextNode("one", TextType.IMAGE, "url1"),
+            TextNode(" middle ", TextType.TEXT),
+            TextNode("two", TextType.IMAGE, "url2"),
+            TextNode("three", TextType.IMAGE, "url3"),
+            TextNode(" end", TextType.TEXT)
+        ]
+        self.assertEqual(result, expected)
+
+    def test_split_nodes_image_empty_alt_text(self):
+        nodes = [TextNode("![](url)", TextType.TEXT)]
+        result = split_nodes_image(nodes)
+        expected = [
+            TextNode("", TextType.IMAGE, "url"),
+        ]
+        self.assertEqual(result, expected)
+
+    def test_split_nodes_link_basic(self):
+        nodes = [TextNode("Click [here](url) now", TextType.TEXT)]
+        result = split_nodes_link(nodes)
+        expected = [
+            TextNode("Click ", TextType.TEXT),
+            TextNode("here", TextType.LINK, "url"),
+            TextNode(" now", TextType.TEXT)
+        ]
+        self.assertEqual(result, expected)
+
+    def test_split_nodes_link_no_links(self):
+        nodes = [TextNode("Plain text", TextType.TEXT)]
+        result = split_nodes_link(nodes)
+        expected = [TextNode("Plain text", TextType.TEXT)]
+        self.assertEqual(result, expected)
+
+    def test_split_nodes_link_no_links(self):
+        nodes = [TextNode("Plain text", TextType.TEXT)]
+        result = split_nodes_link(nodes)
+        expected = [TextNode("Plain text", TextType.TEXT)]
+        self.assertEqual(result, expected)
+
+    def test_split_nodes_link_multiple(self):
+        nodes = [TextNode("Start [link1](url1) middle [link2](url2) end", TextType.TEXT)]
+        result = split_nodes_link(nodes)
+        expected = [
+            TextNode("Start ", TextType.TEXT),
+            TextNode("link1", TextType.LINK, "url1"),
+            TextNode(" middle ", TextType.TEXT),
+            TextNode("link2", TextType.LINK, "url2"),
+            TextNode(" end", TextType.TEXT)
+        ]
+        self.assertEqual(result, expected)
+
+    def test_split_nodes_link_at_start(self):
+        nodes = [TextNode("[link](url) rest of text", TextType.TEXT)]
+        result = split_nodes_link(nodes)
+        expected = [
+            TextNode("link", TextType.LINK, "url"),
+            TextNode(" rest of text", TextType.TEXT)
+        ]
+        self.assertEqual(result, expected)
+
+    def test_split_nodes_link_at_end(self):
+        nodes = [TextNode("beginning [link](url)", TextType.TEXT)]
+        result = split_nodes_link(nodes)
+        expected = [
+            TextNode("beginning ", TextType.TEXT),
+            TextNode("link", TextType.LINK, "url"),
+        ]
+        self.assertEqual(result, expected)
+
+    def test_split_nodes_adjacent_links(self):
+        nodes = [TextNode("[one](url1)[two](url2)", TextType.TEXT)]
+        result = split_nodes_link(nodes)
+        expected = [
+            TextNode("one", TextType.LINK, "url1"),
+            TextNode("two", TextType.LINK, "url2"),
+        ]
+        self.assertEqual(result, expected)
+
+    def test_split_nodes_link_complex_url(self):
+        nodes = [TextNode("Check [this](https://example.com/path?param=1#fragment) out", TextType.TEXT)]
+        result = split_nodes_link(nodes)
+        expected = [
+            TextNode("Check ", TextType.TEXT),
+            TextNode("this", TextType.LINK, "https://example.com/path?param=1#fragment"),
+            TextNode(" out", TextType.TEXT)
+        ]
+        self.assertEqual(result, expected)
+
+    def test_split_nodes_link_with_spaces(self):
+        nodes = [TextNode("[link with spaces](url with spaces)", TextType.TEXT)]
+        result = split_nodes_link(nodes)
+        expected = [
+            TextNode("link with spaces", TextType.LINK, "url with spaces"),
+        ]
+        self.assertEqual(result, expected)
+
+    def test_split_nodes_multiple_empty_texts(self):
+        nodes = [TextNode("[one](url1) [two](url2) [three](url3)", TextType.TEXT)]
+        result = split_nodes_link(nodes)
+        expected = [
+            TextNode("one", TextType.LINK, "url1"),
+            TextNode("two", TextType.LINK, "url2"),
+            TextNode("three", TextType.LINK, "url3"),
+        ]
+        self.assertEqual(result, expected)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,6 +1,6 @@
 import unittest
 
-from htmlnode import HTMLNode, LeafNode, ParentNode, extract_markdown_images, extract_markdown_links
+from htmlnode import HTMLNode, LeafNode, ParentNode
 
 class TestHTMLnode(unittest.TestCase):
     def test_prop_to_html(self):
@@ -173,101 +173,7 @@ class TestHTMLnode(unittest.TestCase):
         node = ParentNode("div", [])
         self.assertEqual(node.to_html(), "<div></div>")
 
-    def test_extract_basic_image(self):
-        text = "![rick roll](https://i.imgur.com/aKaOqIh.gif)"
-        expected = [("rick roll", "https://i.imgur.com/aKaOqIh.gif")]
-        self.assertEqual(extract_markdown_images(text), expected)
 
-    def test_extract_multiple_images(self):
-        text = "![rick roll](https://i.imgur.com/aKaOqIh.gif) and ![obi wan](https://i.imgur.com/fJRm4Vk.jpeg)"
-        expected = [
-            ("rick roll", "https://i.imgur.com/aKaOqIh.gif"),
-            ("obi wan", "https://i.imgur.com/fJRm4Vk.jpeg")
-        ]
-        self.assertEqual(extract_markdown_images(text), expected)
-
-    def test_extract_basic_link(self):
-        text = "[to boot dev](https://www.boot.dev)"
-        expected = [("to boot dev", "https://www.boot.dev")]
-        self.assertEqual(extract_markdown_links(text), expected)
-
-    def test_extract_multiple_links(self):
-        text = "[boot.dev](https://www.boot.dev) and [youtube](https://youtube.com)"
-        expected = [
-            ("boot.dev", "https://www.boot.dev"),
-            ("youtube", "https://youtube.com")
-        ]
-        self.assertEqual(extract_markdown_links(text), expected)
-
-    def test_empty_text(self):
-        self.assertEqual(extract_markdown_images(""), [])
-        self.assertEqual(extract_markdown_links(""), [])
-
-    def test_text_with_no_matches(self):
-        text = "This is just plain text without any markdown"
-        self.assertEqual(extract_markdown_images(text), [])
-
-    def test_mixed_content(self):
-        text = "Here's a ![cute cat](https://pics.com/cat.jpg) and a [link to dogs](https://dogs.com)"
-        self.assertEqual(
-            extract_markdown_images(text),
-            [("cute cat", "https://pics.com/cat.jpg")]
-        )
-        self.assertEqual(
-            extract_markdown_links(text),
-            [("link to dogs", "https://dogs.com")]
-        )
-
-    def test_special_characters_in_url(self):
-        text = "![test](https://example.com/path?param=1&other=2) [complex link](https://api.com/path?q=test&page=1#section)"
-        self.assertEqual(
-            extract_markdown_images(text),
-            [("test", "https://example.com/path?param=1&other=2")]
-        )
-        self.assertEqual(
-            extract_markdown_links(text),
-            [("complex link", "https://api.com/path?q=test&page=1#section")]
-        )
-
-    def test_multiline_content(self):
-        text = """
-        First line with ![image1](https://test.com/1.jpg)
-        Second line with [link1](https://test.com/page1)
-        Third line with ![image2](https://test.com/2.jpg)
-        """
-        self.assertEqual(
-            extract_markdown_images(text),
-            [
-                ("image1", "https://test.com/1.jpg"),
-                ("image2", "https://test.com/2.jpg")
-            ]
-        )
-        self.assertEqual(
-            extract_markdown_links(text),
-            [("link1", "https://test.com/page1")]
-        )
-    
-    def test_adjacent_links_and_images(self):
-        text = "![img1](url1)![img2](url2)[link1](url3)[link2](url4)"
-        self.assertEqual(
-            extract_markdown_images(text),
-            [("img1", "url1"), ("img2", "url2")]
-        )
-        self.assertEqual(
-            extract_markdown_links(text),
-            [("link1", "url3"), ("link2", "url4")]
-        )
-
-    def test_empty_alt_text_and_urls(self):
-        text = "![](https://example.com) [](https://example.com)"
-        self.assertEqual(
-            extract_markdown_images(text),
-            [("", "https://example.com")]
-        )
-        self.assertEqual(
-            extract_markdown_links(text),
-            [("", "https://example.com")]
-        )
 
 
 if __name__ == "__main__":

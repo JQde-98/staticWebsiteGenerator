@@ -66,10 +66,3 @@ class ParentNode(HTMLNode):
         props_html = self.props_to_html()
         return f"<{self.tag}{props_html}>{rest_html}</{self.tag}>"
     
-def extract_markdown_images(text):
-    matched_text = re.findall(r"!\[([^\[\]]*)\]\(([^\(\)]*)\)", text)
-    return matched_text
-
-def extract_markdown_links(text):
-    matched_text = re.findall(r"(?<!!)\[([^\[\]]*)\]\(([^\(\)]*)\)", text)
-    return matched_text
