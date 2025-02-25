@@ -8,7 +8,8 @@ from textnode import (
     extract_markdown_links, 
     extract_markdown_images,
     split_nodes_image,
-    split_nodes_link
+    split_nodes_link,
+    text_to_textnodes
     )
 
 from htmlnode import LeafNode
@@ -119,8 +120,7 @@ class TestTextNode(unittest.TestCase):
             TextNode("Hello ", TextType.TEXT),
             TextNode("code", TextType.CODE),
             TextNode(" and ", TextType.TEXT),
-            TextNode("more code", TextType.CODE),
-            TextNode("", TextType.TEXT)
+            TextNode("more code", TextType.CODE)
         ]
         self.assertEqual(result, expected)
 
@@ -139,9 +139,7 @@ class TestTextNode(unittest.TestCase):
         expected = [
             TextNode("Hello ", TextType.TEXT),
             TextNode("world", TextType.BOLD),
-            TextNode(" ", TextType.TEXT),
-            TextNode("code", TextType.CODE),
-            TextNode("", TextType.TEXT)
+            TextNode("code", TextType.CODE)
         ]
         self.assertEqual(result, expected)
 
@@ -450,6 +448,52 @@ class TestTextNode(unittest.TestCase):
             TextNode("one", TextType.LINK, "url1"),
             TextNode("two", TextType.LINK, "url2"),
             TextNode("three", TextType.LINK, "url3"),
+        ]
+        self.assertEqual(result, expected)
+
+    def test_text_to_textnode(self):
+        text = "Hello world"
+        result = text_to_textnodes(text)
+        expected = [TextNode("Hello world", TextType.TEXT)]
+        self.assertEqual(result, expected)
+
+    def test_text_to_textnode_bold(self):
+        text = "Hello **world**"
+        result = text_to_textnodes(text)
+        expected = [
+            TextNode("Hello ", TextType.TEXT),
+            TextNode("world", TextType.BOLD)
+        ]
+        self.assertEqual(result, expected)
+
+    def test_text_to_textnode_code(self):
+        text = "Hello `code` world"
+        result = text_to_textnodes(text)
+        expected = [
+            TextNode("Hello ", TextType.TEXT),
+            TextNode("code", TextType.CODE),
+            TextNode(" world", TextType.TEXT)
+        ]
+        self.assertEqual(result, expected)
+
+    def test_text_to_textnode_image_link(self):
+        text = "Click [here](https://boot.dev) and ![alt](image.jpg)"
+        result = text_to_textnodes(text)
+        expected = [
+            TextNode("Click ", TextType.TEXT),
+            TextNode("here", TextType.LINK, "https://boot.dev"),
+            TextNode(" and ", TextType.TEXT),
+            TextNode("alt", TextType.IMAGE, "image.jpg")
+        ]
+        self.assertEqual(result, expected)    
+
+    def test_text_to_textnode_bold_middle(self):
+        text = "Hello **bold** world"
+        result = text_to_textnodes(text)
+        expected = [
+            TextNode("Hello ", TextType.TEXT),
+            TextNode("bold", TextType.BOLD),
+            TextNode(" world", TextType.TEXT)
         ]
         self.assertEqual(result, expected)
 

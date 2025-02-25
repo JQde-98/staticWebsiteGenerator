@@ -80,12 +80,12 @@ def split_nodes_delimiter(old_nodes, delimiter, text_type):
             new_nodes.append(node)
             continue    
 
-        split_text = str(node.text).split(delimiter)
+        split_text = node.text.split(delimiter)
         if len(split_text) % 2 == 0:
             raise Exception('invalid Markdown syntax')
         
         for i in range(0, len(split_text)):
-            if i == 0 or i % 2 == 0:
+            if (i == 0 or i % 2 == 0) and (split_text[i].strip() != ""):
                 new_nodes.append(TextNode(split_text[i], TextType.TEXT))
             elif i % 2 != 0:
                 new_nodes.append(TextNode(split_text[i], text_type))
@@ -155,3 +155,15 @@ def split_nodes_link(old_nodes):
                         new_nodes.extend(rest_of_new_nodes)
 
     return new_nodes
+
+def text_to_textnodes(text):
+    textnodes = []
+    textnodes.append(TextNode(text, TextType.TEXT))
+
+    textnodes = split_nodes_delimiter(textnodes, "**", TextType.BOLD)
+    textnodes = split_nodes_delimiter(textnodes, "*", TextType.ITALIC)
+    textnodes = split_nodes_delimiter(textnodes, "`", TextType.CODE) 
+    textnodes = split_nodes_image(textnodes)
+    textnodes = split_nodes_link(textnodes)
+
+    return textnodes
