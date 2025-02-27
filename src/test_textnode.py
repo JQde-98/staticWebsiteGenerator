@@ -2,14 +2,17 @@ import unittest
 
 from textnode import (
     TextNode, 
-    TextType, 
+    TextType,
+    BlockType, 
     text_node_to_html_node, 
     split_nodes_delimiter, 
     extract_markdown_links, 
     extract_markdown_images,
     split_nodes_image,
     split_nodes_link,
-    text_to_textnodes
+    text_to_textnodes,
+    markdown_to_blocks,
+    block_to_block_type
     )
 
 from htmlnode import LeafNode
@@ -497,6 +500,267 @@ class TestTextNode(unittest.TestCase):
         ]
         self.assertEqual(result, expected)
 
+class TestMarkdownToBlocks(unittest.TestCase):
+    def test_markdown_to_blocks(self):
+        md = """
+    This is **bolded** paragraph
+
+    This is another paragraph with _italic_ text and `code` here
+    This is the same paragraph on a new line
+
+    - This is a list
+    - with items
+    """
+        blocks = markdown_to_blocks(md)
+        self.assertEqual(
+            blocks,
+            [
+                "This is **bolded** paragraph",
+                "This is another paragraph with _italic_ text and `code` here\nThis is the same paragraph on a new line",
+                "- This is a list\n- with items",
+            ],
+        )
+
+    def test_markdown_to_blocks_simple_heading_and_paragraph(self):
+        md = """
+    # Heading 1\n\nThis is a paragraph.
+    """
+        blocks = markdown_to_blocks(md)
+        self.assertEqual(
+            blocks,
+            [
+                "# Heading 1", 
+                "This is a paragraph."
+            ],
+        )
+
+    def test_markdown_to_blocks_mixed_blocks(self):
+        md = """
+    # A heading\n\n\nThis is a paragraph.\n\n- List item 1\n- List item 2\n\n
+    """
+        blocks = markdown_to_blocks(md)
+        self.assertEqual(
+            blocks,
+            [
+                "# A heading", 
+                "This is a paragraph.", 
+                "- List item 1\n- List item 2"
+            ],
+        )
+
+    def test_markdown_to_blocks_single_block(self):
+        md = """
+    > This is a blockquote.
+    """
+        blocks = markdown_to_blocks(md)
+        self.assertEqual(
+            blocks,
+            [
+                "> This is a blockquote."
+            ],
+        )    
+
+    def test_markdown_to_blocks_empty(self):
+        md = ""
+        blocks = markdown_to_blocks(md)
+        self.assertEqual(
+            blocks,
+            [],
+        ) 
+
+    def test_markdown_to_blocks_multiple_newlines(self):
+        md = """
+    First block\n\n\n\nSecond block\n\n\nThird block
+    """
+        blocks = markdown_to_blocks(md)
+        self.assertEqual(
+            blocks,
+            [
+                "First block", 
+                "Second block", 
+                "Third block"
+            ],
+        ) 
+
+    def test_markdown_to_blocks_indented_block(self):
+        md = """
+        code block with\n    indents\n\nAnother block
+    """
+        blocks = markdown_to_blocks(md)
+        self.assertEqual(
+            blocks,
+            [
+                "code block with\nindents", 
+                "Another block"
+            ],
+        )     
+
+class TestBlockToBlockType(unittest.TestCase):
+    def test_block_to_block_type_paragraph(self):
+        block = """
+        This is a simple paragraph.
+        It can span multiple lines.
+    """
+        result = block_to_block_type(block)
+        expected = BlockType.paragraph
+        self.assertEqual(result, expected)
+
+    def test_block_to_block_type_paragraph2(self):
+        block = "Just a single line paragraph."
+        result = block_to_block_type(block)
+        expected = BlockType.paragraph
+        self.assertEqual(result, expected)    
+
+    def test_block_to_block_type_heading(self):
+        block = "# Heading level 1"
+        result = block_to_block_type(block)
+        expected = BlockType.heading
+        self.assertEqual(result, expected)     
+
+    def test_block_to_block_type_heading2(self):
+        block = "###### Heading level 6"
+        result = block_to_block_type(block)
+        expected = BlockType.heading
+        self.assertEqual(result, expected)
+        
+    def test_block_to_block_type_invalid_heading(self):
+        block = "####### Invalid heading"
+        result = block_to_block_type(block)
+        expected = BlockType.paragraph
+        self.assertEqual(result, expected)
+
+    def test_block_to_block_type_invalid_heading2(self):
+        block = "#Invalid heading"
+        result = block_to_block_type(block)
+        expected = BlockType.paragraph
+        self.assertEqual(result, expected)
+
+    def test_block_to_block_type_code(self):
+        block = """```
+function example() {
+return "Hello World";
+}
+```"""
+        result = block_to_block_type(block)
+        expected = BlockType.code
+        self.assertEqual(result, expected)      
+
+    def test_block_to_block_type_code2(self):
+        block = """```
+Single line code
+```"""
+        result = block_to_block_type(block)
+        expected = BlockType.code
+        self.assertEqual(result, expected)     
+
+    def test_block_to_block_type_quote(self):
+        block = """> This is a quote
+> More quote text"""
+        result = block_to_block_type(block)
+        expected = BlockType.quote
+        self.assertEqual(result, expected) 
+
+    def test_block_to_block_type_quote2(self):
+        block = "> Single line quote"
+        result = block_to_block_type(block)
+        expected = BlockType.quote
+        self.assertEqual(result, expected)
+
+    def test_block_to_block_type_invalid_quote(self):
+        block = """> First line is quote
+Second line is not"""
+        result = block_to_block_type(block)
+        expected = BlockType.paragraph
+        self.assertEqual(result, expected)  
+
+    def test_block_to_block_type_unordered_list(self):
+        block = """- Item one
+- Item two
+- Item three"""
+        result = block_to_block_type(block)
+        expected = BlockType.unordered_list
+        self.assertEqual(result, expected) 
+
+    def test_block_to_block_type_unordered_list2(self):
+        block = "- Single item list"
+        result = block_to_block_type(block)
+        expected = BlockType.unordered_list
+        self.assertEqual(result, expected)
+
+    def test_block_to_block_type_invalid_unordered_list(self):
+        block = """- First item
+Second item without dash"""
+        result = block_to_block_type(block)
+        expected = BlockType.paragraph
+        self.assertEqual(result, expected)
+
+    def test_block_to_block_type_ordered_list(self):
+        block = """1. First item
+2. Second item
+3. Third item"""
+        result = block_to_block_type(block)
+        expected = BlockType.ordered_list
+        self.assertEqual(result, expected)
+
+    def test_block_to_block_type_ordered_list2(self):
+        block = "1. Single item ordered list"
+        result = block_to_block_type(block)
+        expected = BlockType.ordered_list
+        self.assertEqual(result, expected)
+
+    def test_block_to_block_type_invalid_ordered_list(self):
+        block = """1. First item
+3. Third item"""
+        result = block_to_block_type(block)
+        expected = BlockType.paragraph
+        self.assertEqual(result, expected)
+
+    def test_block_to_block_type_invalid_ordered_list2(self):
+        block = """1. First item
+2. Second item
+4. Fourth item"""
+        result = block_to_block_type(block)
+        expected = BlockType.paragraph
+        self.assertEqual(result, expected)
+
+    def test_block_to_block_type_invalid_ordered_list3(self):
+        block = """2. Starts with 2 instead of 1
+3. Continues with 3"""
+        result = block_to_block_type(block)
+        expected = BlockType.paragraph
+        self.assertEqual(result, expected)
+
+    def test_block_to_block_type_invalid_ordered_list4(self):
+        block = """1. Item
+2. Item
+3. Item
+ 4. Indented item (not starting at beginning)"""
+        result = block_to_block_type(block)
+        expected = BlockType.paragraph
+        self.assertEqual(result, expected)
+
+    def test_block_to_block_type_edge_case(self):
+        block = """1. This looks like an ordered list
+But the second line doesn't follow the pattern"""
+        result = block_to_block_type(block)
+        expected = BlockType.paragraph
+        self.assertEqual(result, expected)
+
+    def test_block_to_block_type_edge_case2(self):
+        block = """- This looks like an unordered list
+> But the second line is a quote"""
+        result = block_to_block_type(block)
+        expected = BlockType.paragraph
+        self.assertEqual(result, expected)
+
+    def test_block_to_block_type_edge_case3(self):
+        block = """```
+This has code markers
+```
+But also has extra content after closing"""
+        result = block_to_block_type(block)
+        expected = BlockType.paragraph
+        self.assertEqual(result, expected)
 
 if __name__ == "__main__":
     unittest.main()

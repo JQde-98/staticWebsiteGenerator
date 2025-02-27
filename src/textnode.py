@@ -10,6 +10,14 @@ class TextType(Enum):
     LINK = 'link'
     IMAGE = 'image'
 
+class BlockType(Enum):
+    paragraph = 'paragraph'
+    heading = 'heading'
+    code = 'code'
+    quote = 'quote'
+    unordered_list = 'unordered_list'
+    ordered_list = 'ordered_list'
+
 class TextNode:
     def __init__(self, text, text_type, url=None): 
         self.text = text 
@@ -167,3 +175,45 @@ def text_to_textnodes(text):
     textnodes = split_nodes_link(textnodes)
 
     return textnodes
+
+def markdown_to_blocks(markdown):
+    blocks = markdown.split("\n\n")
+
+    for block in blocks:
+        stripped_block = block.replace("    ", "")
+        stripped_block = stripped_block.strip()
+        if len(stripped_block) == 0:
+           blocks.remove(block) 
+        elif len(stripped_block) != 0:
+            blocks[blocks.index(block)] = stripped_block      
+
+    return blocks
+    
+def block_to_block_type(block):
+    lines = block.split("\n")
+
+    if re.match(r'^#{1,6} ', block):
+        return BlockType.heading
+    
+    if re.match(r'^```', block) and re.search(r'```$', block):
+        return BlockType.code
+    
+    if all(line.startswith('>') for line in lines):
+        return BlockType.quote
+    
+    if all(line.startswith('- ') for line in lines):
+        return BlockType.unordered_list
+    
+    if lines[0].startswith("1. "):
+        is_ordered_list = True
+
+        for i in range(len(lines)):
+            expected_prefix = f"{i + 1}. "
+            if not lines[i].startswith(expected_prefix):
+                is_ordered_list = False
+                break
+        
+        if is_ordered_list:
+            return BlockType.ordered_list
+        
+    return BlockType.paragraph
