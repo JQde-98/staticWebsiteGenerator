@@ -1,6 +1,5 @@
 import re
 from enum import Enum
-from htmlnode import LeafNode
 
 class TextType(Enum):
     TEXT = 'text'
@@ -45,32 +44,7 @@ class TextNode:
                     self.url == other_node.url)
         
         return (self.text == other_node.text and 
-                self.text_type == other_node.text_type)
-
-    
-
-def text_node_to_html_node(text_node):
-    match text_node.text_type:
-        case TextType.TEXT:
-            return LeafNode(tag=None, value=text_node.text, props=None)
-        
-        case TextType.BOLD:
-            return LeafNode("b", text_node.text)
-        
-        case TextType.ITALIC:
-            return LeafNode("i", text_node.text)
-        
-        case TextType.CODE:
-            return LeafNode("code", text_node.text)
-        
-        case TextType.LINK:
-            return LeafNode("a", text_node.text, {"href": text_node.url})
-        
-        case TextType.IMAGE:
-            return LeafNode("img", "", {"src": text_node.url, "alt": text_node.text})
-        
-        case _:
-            raise Exception('invalid text type')
+                self.text_type == other_node.text_type)    
         
 def extract_markdown_images(text):
     matched_text = re.findall(r"!\[([^\[\]]*)\]\(([^\(\)]*)\)", text)
@@ -170,6 +144,7 @@ def text_to_textnodes(text):
 
     textnodes = split_nodes_delimiter(textnodes, "**", TextType.BOLD)
     textnodes = split_nodes_delimiter(textnodes, "*", TextType.ITALIC)
+    textnodes = split_nodes_delimiter(textnodes, "_", TextType.ITALIC)
     textnodes = split_nodes_delimiter(textnodes, "`", TextType.CODE) 
     textnodes = split_nodes_image(textnodes)
     textnodes = split_nodes_link(textnodes)

@@ -4,7 +4,6 @@ from textnode import (
     TextNode, 
     TextType,
     BlockType, 
-    text_node_to_html_node, 
     split_nodes_delimiter, 
     extract_markdown_links, 
     extract_markdown_images,
@@ -15,7 +14,7 @@ from textnode import (
     block_to_block_type
     )
 
-from htmlnode import LeafNode
+from htmlnode import text_node_to_html_node
 
 
 class TestTextNode(unittest.TestCase):
