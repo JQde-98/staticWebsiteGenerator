@@ -1,1 +1,5 @@
 __pycache__/
+public/
+# Ignore Windows Zone.Identifier files
+*:Zone.Identifier
+*Zone.Identifier
