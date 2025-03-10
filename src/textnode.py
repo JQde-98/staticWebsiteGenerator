@@ -53,7 +53,7 @@ def extract_markdown_images(text):
 def extract_markdown_links(text):
     matched_text = re.findall(r"(?<!!)\[([^\[\]]*)\]\(([^\(\)]*)\)", text)
     return matched_text
-        
+
 def split_nodes_delimiter(old_nodes, delimiter, text_type):
     new_nodes = []
     
@@ -62,15 +62,14 @@ def split_nodes_delimiter(old_nodes, delimiter, text_type):
             new_nodes.append(node)
             continue    
 
-        split_text = node.text.split(delimiter)
-        if len(split_text) % 2 == 0:
-            raise Exception('invalid Markdown syntax')
+        segments = node.text.split(delimiter)
         
-        for i in range(0, len(split_text)):
-            if (i == 0 or i % 2 == 0) and (split_text[i].strip() != ""):
-                new_nodes.append(TextNode(split_text[i], TextType.TEXT))
-            elif i % 2 != 0:
-                new_nodes.append(TextNode(split_text[i], text_type))
+        for i in range(len(segments)):
+            if i == 0 or i % 2 == 0:
+                if segments[i].strip():
+                    new_nodes.append(TextNode(segments[i], TextType.TEXT))
+            else:
+                new_nodes.append(TextNode(segments[i], text_type))
 
     return new_nodes
 
@@ -152,18 +151,17 @@ def text_to_textnodes(text):
     return textnodes
 
 def markdown_to_blocks(markdown):
-    blocks = markdown.split("\n\n")
+    raw_blocks = markdown.split("\n\n")
+    cleaned_blocks = []
 
-    for block in blocks:
-        stripped_block = block.replace("    ", "")
-        stripped_block = stripped_block.strip()
-        if len(stripped_block) == 0:
-           blocks.remove(block) 
-        elif len(stripped_block) != 0:
-            blocks[blocks.index(block)] = stripped_block      
+    for block in raw_blocks:
+        stripped_block = block.replace("    ", "").strip()
 
-    return blocks
-    
+        if len(stripped_block) > 0:
+            cleaned_blocks.append(stripped_block)
+
+    return cleaned_blocks
+   
 def block_to_block_type(block):
     lines = block.split("\n")
 
